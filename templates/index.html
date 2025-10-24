@@ -196,7 +196,7 @@
 
       <div class="start-btn-container">
         <button id="startBtn" class="start-btn">Start Game 🎮</button>
-        <p class="helper-text">💡 New: Time Attack, themes, AI roast judge, stats & SFX.</p>
+        <p class="helper-text">💡 Time Attack, themes, AI roast judge, stats & SFX.</p>
       </div>
     </div>
 
@@ -418,7 +418,7 @@
       daily: dailyCheckbox.checked,
       time_attack: timeAttack,
       time_seconds: timeAttack ? timeSeconds : 0
-    };
+    }
 
     const response = await fetch('/api/game/new', {
       method: 'POST',
@@ -518,36 +518,28 @@
 
     updateGameState(data);
 
+    // After player's attempt, ALWAYS pass turn to AI (if enabled)
     if (data.match !== undefined) {
       if (data.match) {
         sfx.match();
         addHistory(`✓ Player matched ${data.cards[0].name}!`, 'player-move');
         if (data.commentary) { updateCommentary(data.commentary); addHistory(data.commentary, 'commentary'); }
-
         if (data.game_won) { handleGameWon(data); return; }
-
-        if (aiMode) {
-          currentPlayer = 'ai';
-          setTimeout(() => makeAIMove(), 800);
-        } else {
-          canFlip = true;
-        }
       } else {
         sfx.miss();
         addHistory(`✗ Player missed`, 'player-move');
         if (data.commentary) { updateCommentary(data.commentary); addHistory(data.commentary, 'commentary'); }
-
         if (data.cards?.length === 2) lastMissIds = data.cards.map(c => c.id);
 
-        setTimeout(async () => {
-          await resetUnmatched();
-          if (aiMode && !gameWon) {
-            currentPlayer = 'ai';
-            setTimeout(() => makeAIMove(), 500);
-          } else {
-            canFlip = true;
-          }
-        }, 1500);
+        await new Promise(r => setTimeout(r, 1500));
+        await resetUnmatched();
+      }
+
+      if (aiMode && !gameWon) {
+        currentPlayer = 'ai';
+        setTimeout(() => makeAIMove(), 600);
+      } else {
+        canFlip = true;
       }
     } else {
       // first flip
@@ -575,30 +567,27 @@
     const flipData = await flipResponse.json();
     updateGameState(flipData);
 
+    // AI TURN: exactly one attempt (up to 2 flips). After resolution, ALWAYS pass to player.
     if (flipData.match !== undefined) {
       if (flipData.match) {
         addHistory(`✓ AI matched ${flipData.cards[0].name}!`, 'ai-move');
         if (flipData.commentary) { updateCommentary(flipData.commentary); addHistory(flipData.commentary, 'commentary'); }
         sfx.match();
-
-        if (flipData.game_won) {
-          handleGameWon(flipData);
-        } else {
-          setTimeout(() => makeAIMove(), 700);
-        }
+        if (flipData.game_won) { handleGameWon(flipData); return; }
+        currentPlayer = 'player';
+        canFlip = true;
       } else {
         addHistory(`✗ AI missed`, 'ai-move');
         if (flipData.commentary) { updateCommentary(flipData.commentary); addHistory(flipData.commentary, 'commentary'); }
         sfx.miss();
 
-        setTimeout(async () => {
-          await resetUnmatched();
-          currentPlayer = 'player';
-          canFlip = true;
-        }, 1400);
+        await new Promise(r => setTimeout(r, 1400));
+        await resetUnmatched();
+        currentPlayer = 'player';
+        canFlip = true;
       }
     } else {
-      // AI first flip
+      // AI first flip; continue to finish its single attempt
       const cardEl = document.querySelector(`[data-card-id="${data.card_id}"]`);
       if (cardEl) cardEl.classList.add('ai-flipped');
       setTimeout(() => makeAIMove(), 500);
@@ -664,30 +653,34 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ seconds_left: timeLeft })
       }).then(r => r.json()).then(b => {
-        // Update visible player score with bonus
         document.getElementById('playerScore').textContent = b.player_score;
         addHistory(`⏱️ Time bonus +${b.bonus}`, 'commentary');
       });
     }
 
+    // Compute outcome & update banner + AI commentary correctly
     if (aiMode) {
       const p = parseInt(document.getElementById('playerScore').textContent, 10);
       const a = parseInt(document.getElementById('aiScore').textContent, 10);
       if (p > a) {
         winnerText.textContent = '🎉 You Win!';
         winnerMessage.textContent = `You: ${p} - AI: ${a}`;
+        updateCommentary("Okay, okay—GG. You earned that one.");
       } else if (a > p) {
         winnerText.textContent = '🤖 AI Wins!';
         winnerMessage.textContent = `AI: ${a} - You: ${p}`;
+        updateCommentary("Victory secured. You'll get me next time… maybe. 😏");
       } else {
         winnerText.textContent = '🤝 Tie Game!';
         winnerMessage.textContent = `Both: ${p}`;
+        updateCommentary("A tie? Huh. Dramatic, but fine.");
       }
       winnerMessage.textContent += ` • Best streak: ${data.best_streak} • Acc: You ${data.player_accuracy}% vs AI ${data.ai_accuracy}%`;
     } else {
       winnerText.textContent = '🎉 You Win!';
       winnerMessage.textContent = `Completed in ${data.moves} moves! • Best streak: ${data.best_streak} • Acc: ${data.player_accuracy}%`;
       if (timeAttack) winnerMessage.textContent += ` • Time left: ${timeLeft}s`;
+      updateCommentary("Board cleared—nice work.");
     }
 
     banner.classList.add('show');
@@ -722,24 +715,32 @@
     if (gameWon) return;
     canFlip = false;
     addHistory('⏰ Time up!', 'commentary');
+
     const banner = document.getElementById('winnerBanner');
     const winnerText = document.getElementById('winnerText');
     const winnerMessage = document.getElementById('winnerMessage');
 
+    const p = parseInt(document.getElementById('playerScore').textContent, 10);
+    const a = parseInt(document.getElementById('aiScore').textContent, 10);
+
     if (aiMode) {
-      const p = parseInt(document.getElementById('playerScore').textContent, 10);
-      const a = parseInt(document.getElementById('aiScore').textContent, 10);
       if (p > a) {
         winnerText.textContent = '🎉 You Win (Time)!';
+        winnerMessage.textContent = `You: ${p} - AI: ${a}`;
+        updateCommentary("Time! You were ahead—well played.");
       } else if (a > p) {
         winnerText.textContent = '🤖 AI Wins (Time)!';
+        winnerMessage.textContent = `AI: ${a} - You: ${p}`;
+        updateCommentary("Time! I was ahead. Consider it a tactical victory. 😌");
       } else {
         winnerText.textContent = '🤝 Time Tie!';
+        winnerMessage.textContent = `Both: ${p}`;
+        updateCommentary("Time! It's a draw. Suspenseful, but unresolved.");
       }
-      winnerMessage.textContent = `Time ran out • Score You ${p} vs AI ${a}`;
     } else {
       winnerText.textContent = '⏰ Time’s Up!';
       winnerMessage.textContent = `Better luck next run.`;
+      updateCommentary("Clock beat you this time.");
     }
 
     banner.classList.add('show');

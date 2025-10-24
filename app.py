@@ -198,7 +198,7 @@ class MemoryGame:
         } for c in self.cards]
 
     def preview_cards(self):
-        """Reveal everything for blindfold preview (client may ignore if unused)."""
+        """Reveal everything for preview (client may ignore)."""
         return [{
             'id': c['id'],
             'flipped': c['flipped'],
@@ -273,12 +273,15 @@ class MemoryGame:
                 self.current_flipped = []
 
                 commentary = ""
-                if self.matches % self.commentary_frequency == 0 or self.matches == self.pairs:
+                # FIX: endgame commentary respects actual winner in AI mode
+                if self.matches == self.pairs:
+                    commentary = self.get_endgame_commentary()
+                elif self.matches % self.commentary_frequency == 0:
                     commentary = self.get_match_commentary()
-                    if commentary:
-                        self.commentary_history.append({
-                            'text': commentary, 'type': 'match', 'player': player, 'move': self.moves
-                        })
+                if commentary:
+                    self.commentary_history.append({
+                        'text': commentary, 'type': 'match', 'player': player, 'move': self.moves
+                    })
 
                 payload = {
                     'success': True,
@@ -343,18 +346,31 @@ class MemoryGame:
         self.current_flipped = []
 
     def get_match_commentary(self):
-        """AI commentary for a match."""
+        """AI commentary for a mid-game match (non-final)."""
         optimal_moves = self.pairs
         efficiency = (optimal_moves / max(self.moves, 1)) * 100
-        if self.matches == self.pairs:
+        if efficiency > 80:
+            prompt = "Player doing very well. Short competitive response (1 sentence)."
+        else:
+            prompt = "Player made a match but still has room to improve. Playful jab (1 sentence)."
+        return call_ollama(prompt)
+
+    def get_endgame_commentary(self):
+        """AI commentary when the board is cleared; respects actual winner."""
+        if self.ai_mode:
+            if self.player_score > self.ai_score:
+                prompt = f"Game over: Player beat the AI {self.player_score} to {self.ai_score}. Brief congrats to the player (1 sentence)."
+            elif self.ai_score > self.player_score:
+                prompt = f"Game over: AI beat the player {self.ai_score} to {self.player_score}. Short smug remark from the AI (1 sentence)."
+            else:
+                prompt = f"Game over: Tie at {self.player_score} each. Short playful tie remark (1 sentence)."
+        else:
+            # Solo mode
+            optimal_moves = self.pairs
             if self.moves <= optimal_moves + 3:
                 prompt = f"Player won {self.pairs}-pair memory in {self.moves} moves (near optimal). Short grudging compliment (1 sentence)."
             else:
                 prompt = f"Player won but took {self.moves} moves for {self.pairs} pairs. Gentle mock (1 sentence)."
-        elif efficiency > 80:
-            prompt = "Player doing very well. Short competitive response (1 sentence)."
-        else:
-            prompt = "Player made match but struggling. Playful jab (1 sentence)."
         return call_ollama(prompt)
 
     def get_miss_commentary(self):
@@ -362,7 +378,7 @@ class MemoryGame:
         last_mistake = self.mistakes[-1] if self.mistakes else None
         repeated = self.mistakes.count(last_mistake) if last_mistake else 0
         if repeated >= 3:
-            prompt = f"Player flipped same wrong pair {repeated} times. Funny roast (1 sentence)."
+            prompt = f"Player flipped the same wrong pair {repeated} times. Funny roast (1 sentence)."
         elif self.moves >= self.pairs * 2:
             prompt = f"Player at {self.moves} moves for {self.pairs} pairs. Sarcastic comment (1 sentence)."
         else:
