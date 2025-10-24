@@ -40,6 +40,8 @@
     select{padding:10px 14px;border-radius:10px;border:2px solid #e0e0e0;outline:none;font-weight:600}
     .start-btn-container{text-align:center;margin-top:30px}
     .helper-text{text-align:center;color:#999;font-size:.9em;margin-top:15px;font-style:italic}
+    .join-section{margin-top:20px;text-align:center;}
+    .join-section input{padding:10px;width:200px;border-radius:10px;border:2px solid #e0e0e0;outline:none;}
 
     /* Game layout */
     .game-layout{display:grid;grid-template-columns:1fr 400px;gap:20px;height:calc(100vh - 40px)}
@@ -71,7 +73,7 @@
     .stat-box:hover::before{left:100%}
     .stat-box:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(102,126,234,.5)}
     .stat-box.player-stat{background:linear-gradient(135deg,#4caf50,#45a049)}
-    .stat-box.ai-stat{background:linear-gradient(135deg,#f44336,#d32f2f)}
+    .stat-box.opponent-stat{background:linear-gradient(135deg,#f44336,#d32f2f)}
     .stat-value{font-size:2em;font-weight:bold;display:block;text-shadow:2px 2px 4px rgba(0,0,0,.2)}
     .stat-label{font-size:.9em;opacity:.9}
 
@@ -86,7 +88,7 @@
     .memory-card.flipped,.memory-card.matched{background:#fff;animation:flipCard .4s ease-out}
     @keyframes flipCard{0%{transform:rotateY(0)}50%{transform:rotateY(90deg)}100%{transform:rotateY(0)}}
     .memory-card.player-flipped{border:3px solid #4caf50;box-shadow:0 0 20px rgba(76,175,80,.6);animation:glowGreen 1s ease-in-out infinite}
-    .memory-card.ai-flipped{border:3px solid #f44336;box-shadow:0 0 20px rgba(244,67,54,.6);animation:glowRed 1s ease-in-out infinite}
+    .memory-card.opponent-flipped{border:3px solid #f44336;box-shadow:0 0 20px rgba(244,67,54,.6);animation:glowRed 1s ease-in-out infinite}
     @keyframes glowGreen{0%,100%{box-shadow:0 0 20px rgba(76,175,80,.6)}50%{box-shadow:0 0 30px rgba(76,175,80,.9)}}
     @keyframes glowRed{0%,100%{box-shadow:0 0 20px rgba(244,67,54,.6)}50%{box-shadow:0 0 30px rgba(244,67,54,.9)}}
     .memory-card.matched{opacity:.6;cursor:default;animation:matchPulse .5s ease-out}
@@ -149,7 +151,7 @@
         <button class="difficulty-btn" data-difficulty="hard">Hard (12 pairs)</button>
       </div>
 
-      <!-- Theme / Time / AI toggles -->
+      <!-- Theme / Time / AI / Multiplayer toggles -->
       <div class="select-row">
         <label class="checkbox-label" id="themeWrap" style="gap:14px">
           <span>🎨 Theme:</span>
@@ -188,6 +190,13 @@
       </div>
 
       <div class="ai-mode-select" style="margin-top:0;">
+        <label class="checkbox-label" id="multiplayerLabel">
+          <input type="checkbox" id="multiplayerCheckbox"/>
+          <span>👥 Play Multiplayer</span>
+        </label>
+      </div>
+
+      <div class="ai-mode-select" style="margin-top:0;">
         <label class="checkbox-label" id="dailyLabel">
           <input type="checkbox" id="dailyCheckbox"/>
           <span>📅 Daily Puzzle</span>
@@ -197,6 +206,11 @@
       <div class="start-btn-container">
         <button id="startBtn" class="start-btn">Start Game 🎮</button>
         <p class="helper-text">💡 Time Attack, themes, AI roast judge, stats & SFX.</p>
+      </div>
+
+      <div class="join-section">
+        <input id="joinGameId" placeholder="Enter Game ID to Join" />
+        <button id="joinBtn">Join Multiplayer 👥</button>
       </div>
     </div>
 
@@ -212,15 +226,15 @@
           <div class="game-stats">
             <div class="stat-box player-stat">
               <span class="stat-value" id="playerScore">0</span>
-              <span class="stat-label">👤 Your Score</span>
+              <span class="stat-label">👤 Player 1 Score</span>
             </div>
             <div class="stat-box">
               <span class="stat-value" id="movesCount">0</span>
               <span class="stat-label">📊 Total Moves</span>
             </div>
-            <div id="aiScoreBox" class="stat-box ai-stat hidden">
-              <span class="stat-value" id="aiScore">0</span>
-              <span class="stat-label">🤖 AI Score</span>
+            <div id="opponentScoreBox" class="stat-box opponent-stat hidden">
+              <span class="stat-value" id="opponentScore">0</span>
+              <span class="stat-label">🤖 Opponent Score</span>
             </div>
             <div id="timeBox" class="stat-box hidden" style="background:linear-gradient(135deg,#00bcd4,#0097a7)">
               <span class="stat-value" id="timeLeft">0</span>
@@ -236,11 +250,11 @@
             </div>
             <div class="stat-box" style="background:#26a69a;">
               <span class="stat-value"><span id="playerAcc">0</span>%</span>
-              <span class="stat-label">🎯 Your Accuracy</span>
+              <span class="stat-label">🎯 Player 1 Accuracy</span>
             </div>
-            <div class="stat-box ai-stat" style="background:#ef6c00;">
-              <span class="stat-value"><span id="aiAcc">0</span>%</span>
-              <span class="stat-label">🤖 AI Accuracy</span>
+            <div class="stat-box opponent-stat" style="background:#ef6c00;" id="opponentAccBox">
+              <span class="stat-value"><span id="opponentAcc">0</span>%</span>
+              <span class="stat-label">🤖 Opponent Accuracy</span>
             </div>
           </div>
 
@@ -271,10 +285,10 @@
             </div>
           </div>
 
-          <!-- AI Memory HUD -->
-          <div class="history-panel hidden" id="aiMemoryPanel">
-            <h3>🧩 AI Memory</h3>
-            <div id="aiMemoryList" style="font-size:.9em;color:#555;">(learning…)</div>
+          <!-- Opponent Memory HUD (AI only) -->
+          <div class="history-panel hidden" id="opponentMemoryPanel">
+            <h3>🧩 Opponent Memory</h3>
+            <div id="opponentMemoryList" style="font-size:.9em;color:#555;">(learning…)</div>
           </div>
 
           <div class="history-panel">
@@ -291,16 +305,24 @@
 <script>
   // ----------- GLOBAL STATE -----------
   let gameId = null;
+  let gameMode = 'solo';
   let selectedDifficulty = 'easy';
   let theme = 'pokemon';
   let aiMode = false;
-  let aiDifficulty = 'medium'; // default now medium
+  let multiplayer = false;
+  let aiDifficulty = 'medium';
   let canFlip = true;
-  let currentPlayer = 'player';
+  let myPlayer = 'player1';
+  let currentPlayer = 'player1';
   let gameWon = false;
-  let aiMemoryInterval = null;
+  let opponentMemoryInterval = null;
   let lastMissIds = null;
   let hintCooldown = false;
+  let isHost = true;
+  let myToken = null;
+  let player2Joined = true;
+  let pollingInterval = null;
+  let lastCommentaryMove = 0; // NEW: track last commentary rendered
 
   // Time-Attack
   let timeAttack = false;
@@ -362,6 +384,33 @@
     aiMode = e.target.checked;
     aiModeLabel.classList.toggle('checked', aiMode);
     document.getElementById('aiDifficultyContainer').style.display = aiMode ? 'block' : 'none';
+    if (aiMode) {
+      multiplayerCheckbox.checked = false;
+      multiplayerLabel.classList.remove('checked');
+      timeAttackCheckbox.disabled = false;
+      dailyCheckbox.disabled = false;
+    }
+  });
+
+  const multiplayerCheckbox = document.getElementById('multiplayerCheckbox');
+  const multiplayerLabel = document.getElementById('multiplayerLabel');
+  multiplayerCheckbox.addEventListener('change', (e) => {
+    multiplayer = e.target.checked;
+    multiplayerLabel.classList.toggle('checked', multiplayer);
+    if (multiplayer) {
+      aiModeCheckbox.checked = false;
+      aiModeLabel.classList.remove('checked');
+      document.getElementById('aiDifficultyContainer').style.display = 'none';
+      timeAttackCheckbox.checked = false;
+      timeWrap.classList.remove('checked');
+      timeAttackCheckbox.disabled = true;
+      dailyCheckbox.checked = false;
+      dailyLabel.classList.remove('checked');
+      dailyCheckbox.disabled = true;
+    } else {
+      timeAttackCheckbox.disabled = false;
+      dailyCheckbox.disabled = false;
+    }
   });
 
   const themeSelect = document.getElementById('themeSelect');
@@ -385,6 +434,7 @@
   document.getElementById('backBtn').addEventListener('click', backToMenu);
   document.getElementById('hintBtn').addEventListener('click', useHint);
   document.getElementById('muteBtn').addEventListener('click', toggleMute);
+  document.getElementById('joinBtn').addEventListener('click', joinGame);
 
   function toggleMute(){
     muted = !muted;
@@ -392,20 +442,26 @@
   }
 
   function backToMenu() {
-    stopAIMemoryPolling();
+    stopOpponentMemoryPolling();
     stopTimer();
+    stopPolling();
     document.getElementById('gameScreen').classList.remove('active');
     document.getElementById('welcomeScreen').classList.add('active');
   }
 
   async function startNewGame() {
     gameWon = false;
-    currentPlayer = 'player';
+    currentPlayer = 'player1';
     canFlip = true;
     lastMissIds = null;
     hintCooldown = false;
+    isHost = true;
+    myPlayer = 'player1';
+    lastCommentaryMove = 0; // NEW: reset commentary tracker
 
-    timeAttack = timeAttackCheckbox.checked;
+    multiplayer = multiplayerCheckbox.checked;
+    aiMode = aiModeCheckbox.checked && !multiplayer;
+    timeAttack = timeAttackCheckbox.checked && !multiplayer;
     timeSeconds = parseInt(timeSecondsSelect.value, 10);
     timeLeft = 0;
     stopTimer();
@@ -413,9 +469,10 @@
     const payload = {
       difficulty: selectedDifficulty,
       theme,
+      multiplayer,
       ai_mode: aiMode,
       ai_difficulty: aiDifficulty,
-      daily: dailyCheckbox.checked,
+      daily: dailyCheckbox.checked && !multiplayer,
       time_attack: timeAttack,
       time_seconds: timeAttack ? timeSeconds : 0
     }
@@ -426,14 +483,30 @@
       body: JSON.stringify(payload)
     });
 
+    if (!response.ok) {
+      alert('Failed to start game');
+      return;
+    }
+
     const data = await response.json();
     gameId = data.game_id;
+    gameMode = data.mode;
+    myToken = data.player_token;
+    player2Joined = data.player2_joined;
 
-    // AI score + memory panel
-    const aiBox = document.getElementById('aiScoreBox');
-    const aiMemPanel = document.getElementById('aiMemoryPanel');
-    aiBox.classList.toggle('hidden', !aiMode);
-    aiMemPanel.classList.toggle('hidden', !aiMode);
+    // Opponent score + memory panel
+    const opponentBox = document.getElementById('opponentScoreBox');
+    const opponentAccBox = document.getElementById('opponentAccBox');
+    const opponentMemPanel = document.getElementById('opponentMemoryPanel');
+    const isVsOpponent = gameMode !== 'solo';
+    opponentBox.classList.toggle('hidden', !isVsOpponent);
+    opponentAccBox.classList.toggle('hidden', !isVsOpponent);
+    opponentMemPanel.classList.toggle('hidden', gameMode !== 'vs_ai');
+
+    const opponentLabel = gameMode === 'vs_ai' ? '🤖 AI Score' : '🧑 Player 2 Score';
+    const opponentAccLabel = gameMode === 'vs_ai' ? '🤖 AI Accuracy' : '🧑 Player 2 Accuracy';
+    document.querySelector('#opponentScoreBox .stat-label').textContent = opponentLabel;
+    document.querySelector('#opponentAccBox .stat-label').textContent = opponentAccLabel;
 
     // Time box
     const timeBox = document.getElementById('timeBox');
@@ -453,10 +526,10 @@
     // Reset displays
     document.getElementById('movesCount').textContent = '0';
     document.getElementById('playerScore').textContent = '0';
-    document.getElementById('aiScore').textContent = '0';
+    document.getElementById('opponentScore').textContent = '0';
     document.getElementById('bestStreak').textContent = '0';
     document.getElementById('playerAcc').textContent = '0';
-    document.getElementById('aiAcc').textContent = '0';
+    document.getElementById('opponentAcc').textContent = '0';
     document.getElementById('winnerBanner').classList.remove('show');
     document.getElementById('aiCommentary').textContent = 'Go! 🏁';
     const historyList = document.getElementById('historyList');
@@ -464,14 +537,98 @@
 
     renderCards(data.cards);
 
+    // Handle multiplayer waiting
+    if (gameMode === 'vs_human' && isHost && !player2Joined) {
+      const waitingDiv = document.createElement('div');
+      waitingDiv.id = 'waitingDiv';
+      waitingDiv.style.textAlign = 'center';
+      waitingDiv.style.margin = '20px 0';
+      waitingDiv.innerHTML = `<p>Share this game ID with your friend: <strong>${gameId}</strong></p><p>Waiting for Player 2 to join...</p>`;
+      document.querySelector('.game-left').insertBefore(waitingDiv, grid);
+      canFlip = false;
+      pollState();
+    } else {
+      canFlip = currentPlayer === myPlayer;
+    }
+
     // Switch to game screen
     document.getElementById('welcomeScreen').classList.remove('active');
     document.getElementById('gameScreen').classList.add('active');
 
-    stopAIMemoryPolling();
-    if (aiMode) startAIMemoryPolling();
+    stopOpponentMemoryPolling();
+    if (gameMode === 'vs_ai') startOpponentMemoryPolling();
 
     if (data.daily) addHistory(`🗓 Daily Board (${data.seed})`, 'commentary');
+  }
+
+  async function joinGame() {
+    const joinId = document.getElementById('joinGameId').value.trim();
+    if (!joinId) return;
+
+    const response = await fetch(`/api/game/${joinId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+      alert('Cannot join game');
+      return;
+    }
+
+    const data = await response.json();
+    gameId = data.game_id;
+    gameMode = data.mode;
+    myToken = data.player_token;
+    isHost = data.is_host;
+    myPlayer = isHost ? 'player1' : 'player2';
+    player2Joined = data.player2_joined;
+    currentPlayer = data.current_player;
+    lastCommentaryMove = 0; // NEW: reset commentary tracker
+
+    // Opponent score + memory panel
+    const opponentBox = document.getElementById('opponentScoreBox');
+    const opponentAccBox = document.getElementById('opponentAccBox');
+    const opponentMemPanel = document.getElementById('opponentMemoryPanel');
+    const isVsOpponent = gameMode !== 'solo';
+    opponentBox.classList.toggle('hidden', !isVsOpponent);
+    opponentAccBox.classList.toggle('hidden', !isVsOpponent);
+    opponentMemPanel.classList.toggle('hidden', gameMode !== 'vs_ai');
+
+    const opponentLabel = gameMode === 'vs_ai' ? '🤖 AI Score' : '🧑 Player 2 Score';
+    const opponentAccLabel = gameMode === 'vs_ai' ? '🤖 AI Accuracy' : '🧑 Player 2 Accuracy';
+    document.querySelector('#opponentScoreBox .stat-label').textContent = opponentLabel;
+    document.querySelector('#opponentAccBox .stat-label').textContent = opponentAccLabel;
+
+    // Time box (should be hidden for multiplayer)
+    document.getElementById('timeBox').classList.add('hidden');
+
+    // Update grid class
+    const grid = document.getElementById('memoryGrid');
+    grid.className = `memory-grid ${selectedDifficulty}`;  // Assume same difficulty
+
+    // Reset displays
+    document.getElementById('movesCount').textContent = '0';
+    document.getElementById('playerScore').textContent = '0';
+    document.getElementById('opponentScore').textContent = '0';
+    document.getElementById('bestStreak').textContent = '0';
+    document.getElementById('playerAcc').textContent = '0';
+    document.getElementById('opponentAcc').textContent = '0';
+    document.getElementById('winnerBanner').classList.remove('show');
+    document.getElementById('aiCommentary').textContent = 'Go! 🏁';
+    const historyList = document.getElementById('historyList');
+    historyList.innerHTML = '<p style="color:#999;text-align:center;">History will appear here...</p>';
+
+    renderCards(data.cards);
+
+    canFlip = currentPlayer === myPlayer;
+    if (!canFlip) pollState();
+
+    // Switch to game screen
+    document.getElementById('welcomeScreen').classList.remove('active');
+    document.getElementById('gameScreen').classList.add('active');
+
+    stopOpponentMemoryPolling();
+    if (gameMode === 'vs_ai') startOpponentMemoryPolling();
   }
 
   function renderCards(cards) {
@@ -499,7 +656,7 @@
   }
 
   async function handleCardClick(cardId) {
-    if (!canFlip || gameWon || currentPlayer !== 'player') return;
+    if (!canFlip || gameWon || currentPlayer !== myPlayer) return;
 
     const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
     if (!cardEl || cardEl.classList.contains('matched') || cardEl.classList.contains('flipped')) return;
@@ -507,10 +664,13 @@
     canFlip = false;
     sfx.flip();
 
+    const body = { card_id: cardId, player: myPlayer };
+    if (myToken) body.player_token = myToken;
+
     const response = await fetch(`/api/game/${gameId}/flip`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ card_id: cardId, player: 'player' })
+      body: JSON.stringify(body)
     });
 
     const data = await response.json();
@@ -518,16 +678,16 @@
 
     updateGameState(data);
 
-    // After player's attempt, ALWAYS pass turn to AI (if enabled)
+    // After resolution (second flip)
     if (data.match !== undefined) {
       if (data.match) {
         sfx.match();
-        addHistory(`✓ Player matched ${data.cards[0].name}!`, 'player-move');
+        addHistory(`✓ ${myPlayer === 'player1' ? 'Player 1' : 'Player 2'} matched ${data.cards[0].name}!`, 'player-move');
         if (data.commentary) { updateCommentary(data.commentary); addHistory(data.commentary, 'commentary'); }
         if (data.game_won) { handleGameWon(data); return; }
       } else {
         sfx.miss();
-        addHistory(`✗ Player missed`, 'player-move');
+        addHistory(`✗ ${myPlayer === 'player1' ? 'Player 1' : 'Player 2'} missed`, 'player-move');
         if (data.commentary) { updateCommentary(data.commentary); addHistory(data.commentary, 'commentary'); }
         if (data.cards?.length === 2) lastMissIds = data.cards.map(c => c.id);
 
@@ -535,9 +695,15 @@
         await resetUnmatched();
       }
 
-      if (aiMode && !gameWon) {
-        currentPlayer = 'ai';
-        setTimeout(() => makeAIMove(), 600);
+      // After turn, pass to opponent or resume
+      if (gameMode !== 'solo' && !gameWon) {
+        currentPlayer = data.current_player || (myPlayer === 'player1' ? 'player2' : 'player1'); // trust server
+        canFlip = false;
+        if (gameMode === 'vs_ai') {
+          setTimeout(() => makeOpponentMove(), 600);
+        } else {
+          pollState();
+        }
       } else {
         canFlip = true;
       }
@@ -548,12 +714,12 @@
     }
   }
 
-  async function makeAIMove() {
+  async function makeOpponentMove() {
     if (gameWon) return;
 
-    const response = await fetch(`/api/game/${gameId}/ai-move`);
+    const response = await fetch(`/api/game/${gameId}/opponent-move`);
     const data = await response.json();
-    if (data.card_id === undefined) { currentPlayer = 'player'; canFlip = true; return; }
+    if (data.card_id === undefined) { currentPlayer = myPlayer; canFlip = true; return; }
 
     await new Promise(resolve => setTimeout(resolve, 400));
     sfx.flip();
@@ -561,47 +727,47 @@
     const flipResponse = await fetch(`/api/game/${gameId}/flip`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ card_id: data.card_id, player: 'ai' })
+      body: JSON.stringify({ card_id: data.card_id, player: 'player2' })
     });
 
     const flipData = await flipResponse.json();
     updateGameState(flipData);
 
-    // AI TURN: exactly one attempt (up to 2 flips). After resolution, ALWAYS pass to player.
     if (flipData.match !== undefined) {
       if (flipData.match) {
-        addHistory(`✓ AI matched ${flipData.cards[0].name}!`, 'ai-move');
+        addHistory(`✓ Opponent matched ${flipData.cards[0].name}!`, 'ai-move');
         if (flipData.commentary) { updateCommentary(flipData.commentary); addHistory(flipData.commentary, 'commentary'); }
         sfx.match();
         if (flipData.game_won) { handleGameWon(flipData); return; }
-        currentPlayer = 'player';
+        currentPlayer = flipData.current_player || myPlayer;
         canFlip = true;
       } else {
-        addHistory(`✗ AI missed`, 'ai-move');
+        addHistory(`✗ Opponent missed`, 'ai-move');
         if (flipData.commentary) { updateCommentary(flipData.commentary); addHistory(flipData.commentary, 'commentary'); }
         sfx.miss();
 
         await new Promise(r => setTimeout(r, 1400));
         await resetUnmatched();
-        currentPlayer = 'player';
+        currentPlayer = flipData.current_player || myPlayer;
         canFlip = true;
       }
     } else {
-      // AI first flip; continue to finish its single attempt
+      // Opponent first flip; continue
       const cardEl = document.querySelector(`[data-card-id="${data.card_id}"]`);
-      if (cardEl) cardEl.classList.add('ai-flipped');
-      setTimeout(() => makeAIMove(), 500);
+      if (cardEl) cardEl.classList.add('opponent-flipped');
+      setTimeout(() => makeOpponentMove(), 500);
     }
   }
 
   function updateGameState(data) {
     if (data.cards_state) renderCards(data.cards_state);
     if (data.moves !== undefined) document.getElementById('movesCount').textContent = data.moves;
-    if (data.player_score !== undefined) document.getElementById('playerScore').textContent = data.player_score;
-    if (data.ai_score !== undefined) document.getElementById('aiScore').textContent = data.ai_score;
+    if (data.player1_score !== undefined) document.getElementById('playerScore').textContent = data.player1_score;
+    if (data.player2_score !== undefined) document.getElementById('opponentScore').textContent = data.player2_score;
     if (data.best_streak !== undefined) document.getElementById('bestStreak').textContent = data.best_streak;
-    if (data.player_accuracy !== undefined) document.getElementById('playerAcc').textContent = data.player_accuracy;
-    if (data.ai_accuracy !== undefined) document.getElementById('aiAcc').textContent = data.ai_accuracy;
+    if (data.player1_accuracy !== undefined) document.getElementById('playerAcc').textContent = data.player1_accuracy;
+    if (data.player2_accuracy !== undefined) document.getElementById('opponentAcc').textContent = data.player2_accuracy;
+    if (data.current_player) currentPlayer = data.current_player;
   }
 
   function updateCommentary(text) {
@@ -632,7 +798,7 @@
   }
 
   async function getRoast() {
-    const response = await fetch(`/api/game/${gameId}/roast`);
+    const response = await fetch(`/api/game/${gameId}/roast?player=${myPlayer}`);
     const data = await response.json();
     updateCommentary(data.roast);
     addHistory(data.roast, 'commentary');
@@ -641,51 +807,126 @@
   function handleGameWon(data) {
     gameWon = true;
     stopTimer();
+    stopPolling();
 
     const banner = document.getElementById('winnerBanner');
     const winnerText = document.getElementById('winnerText');
     const winnerMessage = document.getElementById('winnerMessage');
 
     if (timeAttack && timeLeft > 0) {
-      // Apply time bonus (server adds to score)
       fetch(`/api/game/${gameId}/time-bonus`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ seconds_left: timeLeft })
       }).then(r => r.json()).then(b => {
-        document.getElementById('playerScore').textContent = b.player_score;
+        document.getElementById('playerScore').textContent = b.player1_score;
         addHistory(`⏱️ Time bonus +${b.bonus}`, 'commentary');
       });
     }
 
-    // Compute outcome & update banner + AI commentary correctly
-    if (aiMode) {
-      const p = parseInt(document.getElementById('playerScore').textContent, 10);
-      const a = parseInt(document.getElementById('aiScore').textContent, 10);
-      if (p > a) {
+    const p1 = data.player1_score || parseInt(document.getElementById('playerScore').textContent, 10);
+    const p2 = data.player2_score || parseInt(document.getElementById('opponentScore').textContent, 10);
+
+    // Adjust based on mode and perspective
+    if (gameMode === 'solo') {
+      winnerText.textContent = '🎉 You Win!';
+      winnerMessage.textContent = `Completed in ${data.moves} moves! • Best streak: ${data.best_streak} • Acc: ${data.player1_accuracy}%`;
+      if (timeAttack) winnerMessage.textContent += ` • Time left: ${timeLeft}s`;
+    } else {
+      const myScore = myPlayer === 'player1' ? p1 : p2;
+      const oppScore = myPlayer === 'player1' ? p2 : p1;
+      const oppName = gameMode === 'vs_ai' ? 'AI' : 'Player ' + (myPlayer === 'player1' ? '2' : '1');
+      if (myScore > oppScore) {
         winnerText.textContent = '🎉 You Win!';
-        winnerMessage.textContent = `You: ${p} - AI: ${a}`;
-        updateCommentary("Okay, okay—GG. You earned that one.");
-      } else if (a > p) {
-        winnerText.textContent = '🤖 AI Wins!';
-        winnerMessage.textContent = `AI: ${a} - You: ${p}`;
-        updateCommentary("Victory secured. You'll get me next time… maybe. 😏");
+        winnerMessage.textContent = `You: ${myScore} - ${oppName}: ${oppScore}`;
+      } else if (oppScore > myScore) {
+        winnerText.textContent = `🤖 ${oppName} Wins!`;
+        winnerMessage.textContent = `${oppName}: ${oppScore} - You: ${myScore}`;
       } else {
         winnerText.textContent = '🤝 Tie Game!';
-        winnerMessage.textContent = `Both: ${p}`;
-        updateCommentary("A tie? Huh. Dramatic, but fine.");
+        winnerMessage.textContent = `Both: ${myScore}`;
       }
-      winnerMessage.textContent += ` • Best streak: ${data.best_streak} • Acc: You ${data.player_accuracy}% vs AI ${data.ai_accuracy}%`;
-    } else {
-      winnerText.textContent = '🎉 You Win!';
-      winnerMessage.textContent = `Completed in ${data.moves} moves! • Best streak: ${data.best_streak} • Acc: ${data.player_accuracy}%`;
-      if (timeAttack) winnerMessage.textContent += ` • Time left: ${timeLeft}s`;
-      updateCommentary("Board cleared—nice work.");
+      winnerMessage.textContent += ` • Best streak: ${data.best_streak} • Acc: You ${myPlayer === 'player1' ? data.player1_accuracy : data.player2_accuracy}% vs ${oppName} ${myPlayer === 'player1' ? data.player2_accuracy : data.player1_accuracy}%`;
     }
 
     banner.classList.add('show');
     addHistory('🏁 Game Over!', 'commentary');
     canFlip = false;
+  }
+function hasTransientFaceUps(cards) {
+  return cards && cards.some(c => c.flipped && !c.matched);
+}
+
+  // ----------- POLLING FOR MULTIPLAYER -----------
+  function pollState() {
+    stopPolling();
+    pollingInterval = setInterval(async () => {
+      const response = await fetch(`/api/game/${gameId}/state?player_token=${myToken}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data.success) return;
+
+      updateGameState(data);
+      renderCards(data.cards_state);
+
+      // NEW: push any new commentary into the judge & history
+      if (Array.isArray(data.commentary_history) && data.commentary_history.length) {
+        const sorted = [...data.commentary_history].sort((a, b) => (a.move || 0) - (b.move || 0));
+        for (const c of sorted) {
+          const mv = c.move || 0;
+          if (mv > lastCommentaryMove && c.text) {
+            updateCommentary(c.text);
+            addHistory(c.text, 'commentary');
+            lastCommentaryMove = mv;
+          }
+        }
+      }
+
+      if (!player2Joined && data.player2_joined) {
+        player2Joined = true;
+        const waitingDiv = document.getElementById('waitingDiv');
+        if (waitingDiv) waitingDiv.remove();
+        addHistory('Player 2 joined! 🎉', 'commentary');
+      }
+
+if (data.game_won) {
+  handleGameWon(data);
+  stopPolling();
+} else if (data.current_player === myPlayer) {
+  // If it's our turn but there are still unmatched face-up cards,
+  // keep polling a bit longer (or trigger a reset) so the board
+  // looks smooth on our side too.
+  if (hasTransientFaceUps(data.cards_state)) {
+    canFlip = false;
+
+    // Optional safety net: if the other client hasn’t reset yet,
+    // ask the server to reset after ~1.3s.
+    if (!window._pendingResetTimer) {
+      window._pendingResetTimer = setTimeout(async () => {
+        try { await resetUnmatched(); } catch {}
+        window._pendingResetTimer = null;
+      }, 1300);
+    }
+
+    // Don't stop polling yet — next tick will pick up the reset.
+    return;
+  }
+
+  // No transient face-ups: board is clean, let the player move.
+  if (window._pendingResetTimer) {
+    clearTimeout(window._pendingResetTimer);
+    window._pendingResetTimer = null;
+  }
+  canFlip = true;
+  stopPolling();
+}
+
+    }, 1000);
+  }
+
+  function stopPolling() {
+    if (pollingInterval) clearInterval(pollingInterval);
+    pollingInterval = null;
   }
 
   // ----------- TIMER -----------
@@ -720,21 +961,21 @@
     const winnerText = document.getElementById('winnerText');
     const winnerMessage = document.getElementById('winnerMessage');
 
-    const p = parseInt(document.getElementById('playerScore').textContent, 10);
-    const a = parseInt(document.getElementById('aiScore').textContent, 10);
+    const p1 = parseInt(document.getElementById('playerScore').textContent, 10);
+    const p2 = parseInt(document.getElementById('opponentScore').textContent, 10);
 
-    if (aiMode) {
-      if (p > a) {
+    if (gameMode === 'vs_ai') {
+      if (p1 > p2) {
         winnerText.textContent = '🎉 You Win (Time)!';
-        winnerMessage.textContent = `You: ${p} - AI: ${a}`;
+        winnerMessage.textContent = `You: ${p1} - AI: ${p2}`;
         updateCommentary("Time! You were ahead—well played.");
-      } else if (a > p) {
+      } else if (p2 > p1) {
         winnerText.textContent = '🤖 AI Wins (Time)!';
-        winnerMessage.textContent = `AI: ${a} - You: ${p}`;
+        winnerMessage.textContent = `AI: ${p2} - You: ${p1}`;
         updateCommentary("Time! I was ahead. Consider it a tactical victory. 😌");
       } else {
         winnerText.textContent = '🤝 Time Tie!';
-        winnerMessage.textContent = `Both: ${p}`;
+        winnerMessage.textContent = `Both: ${p1}`;
         updateCommentary("Time! It's a draw. Suspenseful, but unresolved.");
       }
     } else {
@@ -746,14 +987,14 @@
     banner.classList.add('show');
   }
 
-  // ----------- AI MEMORY HUD -----------
-  function startAIMemoryPolling() {
-    const el = document.getElementById('aiMemoryList');
-    if (aiMemoryInterval) clearInterval(aiMemoryInterval);
-    aiMemoryInterval = setInterval(async () => {
-      if (!aiMode || !gameId) return;
+  // ----------- OPPONENT MEMORY HUD (AI ONLY) -----------
+  function startOpponentMemoryPolling() {
+    const el = document.getElementById('opponentMemoryList');
+    if (opponentMemoryInterval) clearInterval(opponentMemoryInterval);
+    opponentMemoryInterval = setInterval(async () => {
+      if (gameMode !== 'vs_ai' || !gameId) return;
       try {
-        const r = await fetch(`/api/game/${gameId}/ai-memory`);
+        const r = await fetch(`/api/game/${gameId}/opponent-memory`);
         if (!r.ok) return;
         const { memory } = await r.json();
         el.innerHTML = memory.length
@@ -762,7 +1003,7 @@
       } catch {}
     }, 1500);
   }
-  function stopAIMemoryPolling() { if (aiMemoryInterval) clearInterval(aiMemoryInterval); aiMemoryInterval = null; }
+  function stopOpponentMemoryPolling() { if (opponentMemoryInterval) clearInterval(opponentMemoryInterval); opponentMemoryInterval = null; }
 
   // ----------- HINT -----------
   function useHint() {
